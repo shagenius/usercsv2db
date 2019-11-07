@@ -6,11 +6,13 @@
 -- Table structure for table `user`
 --
 
-CREATE TABLE `user` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `name` varchar(255) NOT NULL,
   `surname` varchar(255) NOT NULL,
   `email` varchar(255) DEFAULT NULL
+  `created_on` DATE,
+  `created_on` TIMESTAMP, 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
@@ -20,7 +22,7 @@ CREATE TABLE `user` (
 --
 -- Indexes for table `user`
 --
-ALTER TABLE `user`
+ALTER TABLE `users`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -30,6 +32,6 @@ ALTER TABLE `user`
 --
 -- AUTO_INCREMENT for table `user`
 --
-ALTER TABLE `user`
+ALTER TABLE `users`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 COMMIT;

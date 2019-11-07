@@ -3,6 +3,6 @@
 return array(
     'host' => 'localhost',
     'username' => 'root',
-    'db' => 'can',
+    'db_name' => 'cat',
     'upload_dir' => 'uploads'
 );
