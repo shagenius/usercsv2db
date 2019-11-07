@@ -1,7 +1,4 @@
 <?php
-namespace app;
-
-use app\Database;
 
 class User{
     
@@ -52,7 +49,7 @@ class User{
      * validate email
      * @return boolean
      */
-    private function validate_email() {
+    public function validate_email() {
        if (!filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
             return false;
        }
@@ -60,24 +57,26 @@ class User{
     }
     
     //insert the record into database
-    public function save(){
+    public function save(Database $db){
        // do insert
+        $conn = $db->connect();
+        $stmt = $conn->prepare("INSERT INTO users (name, surname, email) VALUES(:name, :surname, :email)");
+        $stmt->execute([':name' => ucwords($this->name), ':surname' => ucwords($this->surname), ':email' => strtolower($this->email)]);
         
+        $conn->beginTransaction();
+        try {
+            // insert/update query
+            $conn->commit();
+        } catch (PDOException $e) {
+            $conn->rollBack();
+        }
+        $conn=null;
     }
     
     //no insert, dry_run is on
     public function fakeSave(){
         echo 'saved';
         return true;
-    }
-    
-    public function validateInputs(){
-        if($this->validate_email() && $this->email!='') {
-            return true;
-        } else {
-            $this->error = "Invalid email!";
-            return false;
-        }
     }
     
     public function getErrors(){

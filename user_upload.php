@@ -5,10 +5,13 @@
  * author: Shameemah Kurzawa <shameemah@gmail.com>
  * date: 04 Nov 2019
  */
-include 'autoload.php';
+include 'vendor/autoload.php';
 $config = include 'config/app.php';
+include 'app/Database.php';
+include 'app/User.php';
 
-use app\Database;
+use League\Csv\Reader;
+use League\Csv\Statement;
 
 $db = isset($config['db_name']) ? $config['db_name'] : '';
 $dryrun = false;
@@ -46,10 +49,47 @@ $password = $options['p'];
 $host = $options['h'];
 
 
-// create the user table
-$dbCon = new Database($db, $host, $username, $password);
-create_user_table($dbCon);
 
+$dbCon = new Database($db, $host, $username, $password);
+
+// create/rebuild the user table
+if (array_key_exists('create_table', $options)) {
+    create_user_table($dbCon);
+}
+
+// validate csv file
+$filename = $options['file'];
+
+if(!validateCsv($filename)) {
+    die("Invalid user file");
+}
+
+//process upload
+if(file_exists('uploads/'.$filename)){
+    $file  = 'uploads/'.$filename;
+    $reader = Reader::createFromPath($file, 'r');
+    $reader->setHeaderOffset(0);
+    $records = (new Statement())->process($reader);
+
+    foreach ($records->getRecords() as $record) {
+        foreach ($record as $k => $v) {
+            ${trim($k)} = trim($v);
+        }
+        $user = new User($name, $surname, $email);
+        if(!$user->validate_email()) {
+            fwrite(STDOUT, "Invalid email!\n"); 
+        } else {
+            $user->save($dbCon);
+        }
+        
+    }
+}
+
+
+/**
+ * Display the help menu
+ * @param type $args_list
+ */
 function output_help($args_list) {
     $green_font = "";
     $white_font = "";
@@ -75,7 +115,7 @@ function getParams() {
  * @return boolean
  */
 function valid_arguments($user_args) {
-    $mandatory_args = array('u', 'p', 'h', 'file', 'create_table');
+    $mandatory_args = array('u', 'p', 'h', 'file');
     $invalid_count = 0;
 
     foreach ($mandatory_args as $key) {
@@ -91,32 +131,45 @@ function valid_arguments($user_args) {
     return true;
 }
 
+/**
+ * Create user table
+ * @param type $db
+ */
 function create_user_table($db) {
     try {
         $conn = $db->connect();
-        $sql = "CREATE TABLE IF NOT EXISTS `users` (
-            `id` bigint(20) UNSIGNED NOT NULL,
-            `name` varchar(255) NOT NULL,
-            `surname` varchar(255) NOT NULL,
-            `email` varchar(255) DEFAULT NULL
-            `created_on` DATE,
-            `created_on` TIMESTAMP, 
-          ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-            ALTER TABLE `users`
-              ADD PRIMARY KEY (`id`);
-            ALTER TABLE `users`
-               MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
-          ";
-        if ($conn->query($sql) !== TRUE) {
-            echo "Error creating table: " . $conn->error;
-        }
-        $conn = null;
+        $sql = "DROP TABLE IF EXISTS `users`;\n";
+        
+        $sql .= "CREATE TABLE `users` (
+                `id` bigint(20) UNSIGNED NOT NULL,
+                `name` varchar(255) NULL,
+                `surname` varchar(255) NULL,
+                `email` varchar(255) UNIQUE NOT NULL,
+                `created_on` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8;\n";
+        
+        $sql .= "ALTER TABLE `users`
+                ADD PRIMARY KEY (`id`);\n";
+        
+        $sql .= "ALTER TABLE `users`
+                MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;\n";
+        
+        $conn->query($sql);
     }
     catch(\Exception $e)
     {
         echo "Connection failed - ".$e->getMessage();
         //@todo: log exception
     }
-        
+    $conn = null;
+}
+
+function validateCsv($filename){
+    $ext = pathinfo($filename, PATHINFO_EXTENSION);
     
+    if($ext!=='csv') {
+        return false;
+    }
+    
+    return true;
 }
