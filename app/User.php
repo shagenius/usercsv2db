@@ -60,23 +60,19 @@ class User{
     public function save(Database $db){
        // do insert
         $conn = $db->connect();
-        $stmt = $conn->prepare("INSERT INTO users (name, surname, email) VALUES(:name, :surname, :email)");
-        $stmt->execute([':name' => ucwords($this->name), ':surname' => ucwords($this->surname), ':email' => strtolower($this->email)]);
-        
-        $conn->beginTransaction();
-        try {
-            // insert/update query
-            $conn->commit();
-        } catch (PDOException $e) {
-            $conn->rollBack();
-        }
-        $conn=null;
+        $stmt = $conn->prepare("INSERT INTO users (name, surname, email) VALUES(:name, :surname, :email) ON DUPLICATE KEY UPDATE id=id");
+        $stmt->execute([':name' => ucwords(strtolower($this->name)), ':surname' => ucwords(strtolower($this->surname)), ':email' => strtolower($this->email)]);
+ 
+        unset($conn);
     }
     
     //no insert, dry_run is on
-    public function fakeSave(){
-        echo 'saved';
-        return true;
+    public function fakeSave(Database $db){
+        $conn = $db->connect();
+        $stmt = $conn->prepare("INSERT INTO user_test (name, surname, email) VALUES(:name, :surname, :email) ON DUPLICATE KEY UPDATE id=id");
+        $stmt->execute([':name' => ucwords(strtolower($this->name)), ':surname' => ucwords(strtolower($this->surname)), ':email' => strtolower($this->email)]);
+
+        unset($conn);
     }
     
     public function getErrors(){

@@ -13,7 +13,7 @@ include 'app/User.php';
 use League\Csv\Reader;
 use League\Csv\Statement;
 
-$db = isset($config['db_name']) ? $config['db_name'] : '';
+$db_name = isset($config['db_name']) ? $config['db_name'] : '';
 $dryrun = false;
 
 
@@ -50,22 +50,36 @@ $host = $options['h'];
 
 
 
-$dbCon = new Database($db, $host, $username, $password);
+$db = new Database($db_name, $host, $username, $password);
 
 // create/rebuild the user table
 if (array_key_exists('create_table', $options)) {
-    create_user_table($dbCon);
+    create_user_table($db);
+    exit();
 }
+
+if($dryrun && $options['file']=='') {
+    die("Please supply the name of the cvs file, for help type --help\n");
+} 
 
 // validate csv file
 $filename = $options['file'];
 
-if(!validateCsv($filename)) {
-    die("Invalid user file");
+if($filename && !validateCsv($filename)) {
+    die("Invalid user file\n");
 }
 
 //process upload
 if(file_exists('uploads/'.$filename)){
+    // check if table exists before insert/process the csv file
+    try {
+        $conn = $db->connect();
+        $conn->query('SELECT id FROM users');
+        unset($conn);
+    } catch (Exception $ex) {
+        die($ex->getMessage() . ", please use --create_table to create the users table or type --help for more options\n");
+    }
+
     $file  = 'uploads/'.$filename;
     $reader = Reader::createFromPath($file, 'r');
     $reader->setHeaderOffset(0);
@@ -77,12 +91,19 @@ if(file_exists('uploads/'.$filename)){
         }
         $user = new User($name, $surname, $email);
         if(!$user->validate_email()) {
-            fwrite(STDOUT, "Invalid email!\n"); 
+            fwrite(STDOUT, $email . " is not a valid email!\n"); 
         } else {
-            $user->save($dbCon);
+            if($dryrun) {
+                create_test_table($db);
+                $user->fakeSave($db);
+            } else {
+                $user->save($db);
+            }
         }
         
     }
+} else {
+    fwrite(STDOUT, "\nFile could not be found!\n\n");
 }
 
 
@@ -91,11 +112,9 @@ if(file_exists('uploads/'.$filename)){
  * @param type $args_list
  */
 function output_help($args_list) {
-    $green_font = "";
-    $white_font = "";
-    print $white_font . "Options:" . PHP_EOL;
+    print  "Options:" . PHP_EOL;
     foreach ($args_list as $k => $v) {
-        print $green_font . str_pad($k, 24, ' ') . " " . $white_font . $v . PHP_EOL;
+        print str_pad($k, 24, ' ')  . $v . PHP_EOL;
     }
     print PHP_EOL;
 }
@@ -115,7 +134,7 @@ function getParams() {
  * @return boolean
  */
 function valid_arguments($user_args) {
-    $mandatory_args = array('u', 'p', 'h', 'file');
+    $mandatory_args = array('u', 'p', 'h');
     $invalid_count = 0;
 
     foreach ($mandatory_args as $key) {
@@ -152,6 +171,38 @@ function create_user_table($db) {
                 ADD PRIMARY KEY (`id`);\n";
         
         $sql .= "ALTER TABLE `users`
+                MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT; \n";
+        
+        $conn->query($sql);
+    }
+    catch(\Exception $e)
+    {
+        echo "Connection failed - ".$e->getMessage();
+        //@todo: log exception
+    }
+    unset($conn);
+}
+
+/**
+ * Create user table
+ * @param type $db
+ */
+function create_test_table($db) {
+    try {
+        $conn = $db->connect();
+        $sql = "DROP TABLE IF EXISTS `user_test`;\n";
+        
+        $sql .= "CREATE TABLE `user_test` (
+                `id` bigint(20) UNSIGNED NOT NULL,
+                `name` varchar(255) NULL,
+                `surname` varchar(255) NULL,
+                `email` varchar(255) UNIQUE NOT NULL,
+                `created_on` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+              ) ENGINE=BLACKHOLE DEFAULT CHARSET=utf8;\n";
+        $sql .= "ALTER TABLE `users`
+                ADD PRIMARY KEY (`id`);\n";
+        
+        $sql .= "ALTER TABLE `users`
                 MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;\n";
         
         $conn->query($sql);
@@ -161,7 +212,7 @@ function create_user_table($db) {
         echo "Connection failed - ".$e->getMessage();
         //@todo: log exception
     }
-    $conn = null;
+    unset($conn);
 }
 
 function validateCsv($filename){
