@@ -33,22 +33,22 @@ if (array_key_exists('help', $options)) {
     output_help($args_list);
 }
 
-if (array_key_exists('dry_run', $options)) {
-    $dryrun = true;
+// required db parameters:
+$username = isset($options['u']) ? $options['u'] : '';
+$password = isset($options['p']) ? $options['p'] : '';
+$host = isset($options['h']) ? $options['h'] : '';
+
+if($username=='') {
+    die("Missing arguments, -u must be supplied, type --help for all the options!\n");
 }
 
-//check if the arguments/parameters are valuid
-if (!valid_arguments($options)) {
-    echo "Missing arguments, to see the required arguments type --help" . PHP_EOL;
-    exit;
+if($password=='') {
+    die("Missing arguments, -p must be supplied, type --help for all the options!\n");
 }
 
-// required inputs:
-$username = $options['u'];
-$password = $options['p'];
-$host = $options['h'];
-
-
+if($host=='') {
+    die("Missing arguments, -h must be supplied, type --help for all the options!\n");
+}
 
 $db = new Database($db_name, $host, $username, $password);
 
@@ -58,19 +58,26 @@ if (array_key_exists('create_table', $options)) {
     exit();
 }
 
-if($dryrun && $options['file']=='') {
-    die("Please supply the name of the cvs file, for help type --help\n");
-} 
+if (array_key_exists('dry_run', $options)) {
+    $dryrun = true;
+    if(!isset($options['file'])) {
+        die("Missing arguments, --file must be supplied!\n");
+    }
+}
 
 // validate csv file
-$filename = $options['file'];
+$file = isset($options['file']) ? $options['file'] : '';
 
-if($filename && !validateCsv($filename)) {
-    die("Invalid user file\n");
+if($file=='') {
+    die("Missing arguments, --file must be supplied!\n");
+}
+
+if($file && !validateCsv($file)) {
+    die("Invalid user csv file\n");
 }
 
 //process upload
-if(file_exists('uploads/'.$filename)){
+if(file_exists('uploads/'.$file)){
     // check if table exists before insert/process the csv file
     try {
         $conn = $db->connect();
@@ -80,7 +87,7 @@ if(file_exists('uploads/'.$filename)){
         die($ex->getMessage() . ", please use --create_table to create the users table or type --help for more options\n");
     }
 
-    $file  = 'uploads/'.$filename;
+    $file  = 'uploads/'.$file;
     $reader = Reader::createFromPath($file, 'r');
     $reader->setHeaderOffset(0);
     $records = (new Statement())->process($reader);
@@ -128,6 +135,16 @@ function getParams() {
     return $options;
 }
 
+/**
+ * get the db params entered by the user via command line
+ * @return type
+ */
+function getDbParams() {
+    $options = getopt('u:p:h:', ['create_table', 'file:', 'dry_run', 'help']);
+    return $options;
+}
+
+// validatation
 /**
  * check if the arguments are valid
  * @param type $user_args
@@ -209,14 +226,14 @@ function create_test_table($db) {
     }
     catch(\Exception $e)
     {
-        echo "Connection failed - ".$e->getMessage();
+        echo "Connection failed - ".$e->getMessage() . "\n";
         //@todo: log exception
     }
     unset($conn);
 }
 
-function validateCsv($filename){
-    $ext = pathinfo($filename, PATHINFO_EXTENSION);
+function validateCsv($file){
+    $ext = pathinfo($file, PATHINFO_EXTENSION);
     
     if($ext!=='csv') {
         return false;
