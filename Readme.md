@@ -1,20 +1,21 @@
 # usercsv2db
 
-usercsv2db is a php script that process a csv file containing user data and store them to the database
+usercsv2db is a php script that process a csv file containing user data and store them to the database.
 
 ## Installation
 
-1. Install the csv league package dependency, which is required to read the csv file
+1. Install the csv league package dependency, which is required to read the csv file.
 
 ```bash
 composer install 
 ``` 
 
-2. Edit the config file 'config/app' and change the 'db_name' value to the name of your database / create a database called 'cat' (default)
+2. Edit the config file 'config/app' and change the 'db_name' value to the name of your database / create a database called 'cat' (default).
 
 ## Usage
 
-In command line, run the php script user_upload.php with the following arguments
+In command line, run the php script user_upload.php with the following arguments:
+
 
 --file                  [csv file name] – this is the name of the CSV to be parsed
 
@@ -36,3 +37,12 @@ run the command below:
 ```bash
 php user_upload.php -u root -p root -h localhost --create_table
 ```
+
+##Process the CSV file
+
+1. Create a csv file with the following headers: name, surname and email.
+
+2. Place the csv file to be processed in the uploads folder, once the file is processed it will be moved to the 'uploads/processed' folder.
+
+Note: Make sure you have read/write permission on the folder 'uploads' & 'uploads/processed'.
+

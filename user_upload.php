@@ -78,6 +78,8 @@ if($file && !validateCsv($file)) {
     die("Invalid user csv file\n");
 }
 
+$original_filename = $file;
+
 //process upload
 if(file_exists('uploads/'.$file)){
     // check if table exists before insert/process the csv file
@@ -109,13 +111,20 @@ if(file_exists('uploads/'.$file)){
                 $user->save($db);
             }
         }
-        
+    }
+    unset($file);
+    unset($reader);
+    unset($records);
+    
+    //move file after being processed
+    if( file_exists("uploads/" . $original_filename)) {
+        rename("uploads/" . $original_filename,  "uploads/processed/" . $original_filename . ".processed");
     }
 } else {
-    fwrite(STDOUT, "\nFile could not be found!\n\n");
+    fwrite(STDOUT, "\nFile cannot be found!\n");
 }
 
-
+   
 /**
  * Display the help menu
  * @param type $args_list
