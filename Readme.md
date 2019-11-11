@@ -4,10 +4,14 @@ usercsv2db is a php script that process a csv file containing user data and stor
 
 ## Installation
 
-1. Install the csv league package dependency, which is required to read the csv file.
+1. Clone/download the project from https://github.com/shagenius/usercsv2db.git to your local machine.
+
+2. Install all the dependencies via composer.
+
+   On command line, go to the root of the project and run:
 
 ```bash
-composer install 
+composer upldate
 ``` 
 
 2. Edit the config file 'config/app' and change the 'db_name' value to the name of your database / create a database called 'cat' (default).
@@ -38,7 +42,7 @@ run the command below:
 php user_upload.php -u root -p root -h localhost --create_table
 ```
 
-##Process the CSV file
+## Process the CSV file
 
 1. Create a csv file with the following headers: name, surname and email.
 
