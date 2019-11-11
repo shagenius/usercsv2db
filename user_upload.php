@@ -14,7 +14,6 @@ use League\Csv\Reader;
 use League\Csv\Statement;
 
 $db_name = isset($config['db_name']) ? $config['db_name'] : '';
-$dryrun = false;
 
 
 $args_list = array(
@@ -33,10 +32,17 @@ if (array_key_exists('help', $options)) {
     output_help($args_list);
 }
 
+if(count($options)==0){
+    output_help($args_list);
+}
+
 // required db parameters:
 $username = isset($options['u']) ? $options['u'] : '';
 $password = isset($options['p']) ? $options['p'] : '';
 $host = isset($options['h']) ? $options['h'] : '';
+$file = isset($options['file']) ? $options['file'] : '';
+$create_table = isset($options['create_table']) ? true : '';
+$dryrun = isset($options['dry_run']) ? true : false;
 
 if($username=='') {
     die("Missing arguments, -u must be supplied, type --help for all the options!\n");
@@ -50,28 +56,24 @@ if($host=='') {
     die("Missing arguments, -h must be supplied, type --help for all the options!\n");
 }
 
+if($dryrun && $file=='') {
+    die("Missing arguments, --file must be supplied!\n");
+}
+
+if($file == '' && !$create_table) {
+    die("Missing arguments, --create_table or --file must be supplied!\n");
+}
+
 $db = new Database($db_name, $host, $username, $password);
 
 // create/rebuild the user table
-if (array_key_exists('create_table', $options)) {
+if ($create_table) {
     create_user_table($db);
     exit();
 }
 
-if (array_key_exists('dry_run', $options)) {
-    $dryrun = true;
-    if(!isset($options['file'])) {
-        die("Missing arguments, --file must be supplied!\n");
-    }
-}
 
 // validate csv file
-$file = isset($options['file']) ? $options['file'] : '';
-
-if($file=='') {
-    die("Missing arguments, --file must be supplied!\n");
-}
-
 if($file && !validateCsv($file)) {
     die("Invalid user csv file\n");
 }
@@ -123,7 +125,7 @@ function output_help($args_list) {
     foreach ($args_list as $k => $v) {
         print str_pad($k, 24, ' ')  . $v . PHP_EOL;
     }
-    print PHP_EOL;
+    exit();
 }
 
 /**
@@ -135,37 +137,6 @@ function getParams() {
     return $options;
 }
 
-/**
- * get the db params entered by the user via command line
- * @return type
- */
-function getDbParams() {
-    $options = getopt('u:p:h:', ['create_table', 'file:', 'dry_run', 'help']);
-    return $options;
-}
-
-// validatation
-/**
- * check if the arguments are valid
- * @param type $user_args
- * @return boolean
- */
-function valid_arguments($user_args) {
-    $mandatory_args = array('u', 'p', 'h');
-    $invalid_count = 0;
-
-    foreach ($mandatory_args as $key) {
-        if (!array_key_exists($key, $user_args)) {
-            $invalid_count++;
-        }
-    }
-
-    if ($invalid_count > 0) {
-        return false;
-    }
-
-    return true;
-}
 
 /**
  * Create user table
